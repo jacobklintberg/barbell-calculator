@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Barbell Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --surface2: #242424;
+    --border: #333;
+    --text: #f0f0f0;
+    --muted: #888;
+    --bar-color: #c0a060;
+    --collar-color: #888;
+  }
+
+  html, body {
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Barlow', sans-serif;
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .app {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 0 0 2rem;
+    min-height: 100vh;
+  }
+
+  /* HEADER */
+  .header {
+    padding: 1.2rem 1.2rem 0.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .header h1 {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 900;
+    font-size: 22px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text);
+  }
+
+  .header h1 span {
+    color: #c0a060;
+  }
+
+  /* BAR SELECTOR */
+  .bar-selector {
+    display: flex;
+    gap: 8px;
+    padding: 0 1.2rem 1rem;
+  }
+
+  .bar-btn {
+    flex: 1;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 8px 0;
+    color: var(--muted);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .bar-btn.active {
+    background: #1e1a12;
+    border-color: var(--bar-color);
+    color: var(--bar-color);
+  }
+
+  /* WEIGHT DISPLAY */
+  .weight-display {
+    text-align: center;
+    padding: 0.5rem 1.2rem 0.8rem;
+  }
+
+  .weight-number {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 900;
+    font-size: 96px;
+    line-height: 1;
+    color: var(--text);
+    letter-spacing: -2px;
+    transition: transform 0.1s ease;
+  }
+
+  .weight-number.bump {
+    transform: scale(1.04);
+  }
+
+  .weight-unit {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-top: -4px;
+  }
+
+  /* BAR VISUALIZATION */
+  .bar-section {
+    padding: 0 0 0.8rem;
+    overflow: hidden;
+  }
+
+  .bar-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 80px;
+    padding: 0 8px;
+    position: relative;
+  }
+
+  svg#barsvg {
+    width: 100%;
+    max-width: 460px;
+    overflow: visible;
+  }
+
+  /* PLATE PALETTE */
+  .palette-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 0 1.2rem 0.6rem;
+  }
+
+  .palette {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    padding: 0 1.2rem 1rem;
+  }
+
+  .plate-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    padding: 10px 4px 8px;
+    transition: transform 0.1s, opacity 0.1s;
+    gap: 4px;
+    position: relative;
+    min-height: 64px;
+  }
+
+  .plate-btn:active {
+    transform: scale(0.93);
+  }
+
+  .plate-btn .plate-weight {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 17px;
+    font-weight: 900;
+    line-height: 1;
+  }
+
+  .plate-btn .plate-kg {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    opacity: 0.75;
+    text-transform: uppercase;
+  }
+
+  .plate-btn .plate-count {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    background: rgba(0,0,0,0.4);
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+
+  .plate-btn .plate-count.visible {
+    opacity: 1;
+  }
+
+  /* ACTION BUTTONS */
+  .actions {
+    display: flex;
+    gap: 8px;
+    padding: 0.2rem 1.2rem 0.5rem;
+  }
+
+  .action-btn {
+    flex: 1;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 10px;
+    color: var(--text);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .action-btn:active { transform: scale(0.97); }
+
+  .action-btn.undo {
+    color: var(--muted);
+    flex: 0 0 auto;
+    width: 50px;
+    font-size: 20px;
+    padding: 8px;
+  }
+
+  .action-btn.clear {
+    color: #e05050;
+    border-color: #3a1a1a;
+    background: #1a1010;
+  }
+
+  /* PLATE LIST */
+  .plate-list-section {
+    padding: 0.4rem 1.2rem 0;
+  }
+
+  .plate-list-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  .plate-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-height: 32px;
+  }
+
+  .plate-tag {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    border-radius: 20px;
+    padding: 4px 10px 4px 8px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.1s, opacity 0.15s;
+    animation: tagIn 0.2s ease;
+  }
+
+  .plate-tag:active { transform: scale(0.93); opacity: 0.7; }
+
+  @keyframes tagIn {
+    from { transform: scale(0.7); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  .plate-tag .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.3);
+    flex-shrink: 0;
+  }
+
+  .empty-msg {
+    color: var(--muted);
+    font-size: 14px;
+    padding: 4px 0;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="header">
+    <h1>Barbell <span>Calculator</span></h1>
+  </div>
+
+  <div class="bar-selector">
+    <button class="bar-btn active" onclick="setBar(20)" id="bar20">Men's bar — 20 kg</button>
+    <button class="bar-btn" onclick="setBar(15)" id="bar15">Women's bar — 15 kg</button>
+  </div>
+
+  <div class="weight-display">
+    <div class="weight-number" id="totalWeight">20</div>
+    <div class="weight-unit">kg</div>
+  </div>
+
+  <div class="bar-section">
+    <div class="bar-wrap">
+      <svg id="barsvg" viewBox="0 0 460 80" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+  </div>
+
+  <div class="palette-label">Tap to add plates (per side)</div>
+  <div class="palette" id="palette"></div>
+
+  <div class="actions">
+    <button class="action-btn undo" onclick="undo()" title="Undo">↩</button>
+    <button class="action-btn clear" onclick="clearAll()">Clear all</button>
+  </div>
+
+  <div class="plate-list-section">
+    <div class="plate-list-label">Plates per side</div>
+    <div class="plate-list" id="plateList"></div>
+  </div>
+
+</div>
+
+<script>
+const PLATES = [
+  { w: 25,   color: '#D0021B', text: '#fff',   label: '25' },
+  { w: 20,   color: '#1B5AC8', text: '#fff',   label: '20' },
+  { w: 15,   color: '#F5C400', text: '#1a1100',label: '15' },
+  { w: 10,   color: '#007B3E', text: '#fff',   label: '10' },
+  { w: 5,    color: '#E8E8E8', text: '#1a1a1a',label: '5'  },
+  { w: 2.5,  color: '#C0001A', text: '#fff',   label: '2.5'},
+  { w: 2,    color: '#13499E', text: '#fff',   label: '2'  },
+  { w: 1.5,  color: '#D4AA00', text: '#1a1100',label: '1.5'},
+  { w: 1.25, color: '#9E9E9E', text: '#fff',   label: '1.25'},
+  { w: 0.5,  color: '#757575', text: '#fff',   label: '0.5'},
+];
+
+let barWeight = 20;
+let sides = [];
+let history = [[]];
+
+function setBar(w) {
+  barWeight = w;
+  document.getElementById('bar20').classList.toggle('active', w === 20);
+  document.getElementById('bar15').classList.toggle('active', w === 15);
+  render();
+}
+
+function addPlate(plate) {
+  sides.push(plate);
+  history.push([...sides]);
+  render();
+  bumpAnim();
+}
+
+function removePlate(plateW) {
+  const idx = [...sides].reverse().findIndex(p => p.w === plateW);
+  if (idx !== -1) {
+    sides.splice(sides.length - 1 - idx, 1);
+    history.push([...sides]);
+    render();
+    bumpAnim();
+  }
+}
+
+function undo() {
+  if (history.length > 1) {
+    history.pop();
+    sides = [...history[history.length - 1]];
+    render();
+    bumpAnim();
+  }
+}
+
+function clearAll() {
+  sides = [];
+  history = [[]];
+  render();
+  bumpAnim();
+}
+
+function bumpAnim() {
+  const el = document.getElementById('totalWeight');
+  el.classList.remove('bump');
+  requestAnimationFrame(() => {
+    el.classList.add('bump');
+    setTimeout(() => el.classList.remove('bump'), 120);
+  });
+}
+
+function totalWeight() {
+  const platesTotal = sides.reduce((s, p) => s + p.w, 0) * 2;
+  return barWeight + platesTotal;
+}
+
+function render() {
+  const total = totalWeight();
+  const display = Number.isInteger(total) ? total : total.toFixed(2).replace(/\.?0+$/, '');
+  document.getElementById('totalWeight').textContent = display;
+  renderBar();
+  renderPalette();
+  renderPlateList();
+}
+
+function renderPalette() {
+  const counts = {};
+  sides.forEach(p => counts[p.w] = (counts[p.w] || 0) + 1);
+
+  const palette = document.getElementById('palette');
+  palette.innerHTML = '';
+  PLATES.forEach(plate => {
+    const btn = document.createElement('button');
+    btn.className = 'plate-btn';
+    btn.style.background = plate.color;
+    const c = counts[plate.w] || 0;
+    btn.innerHTML = `
+      <span class="plate-weight" style="color:${plate.text}">${plate.label}</span>
+      <span class="plate-kg" style="color:${plate.text}">kg</span>
+      <span class="plate-count ${c > 0 ? 'visible' : ''}" style="color:${plate.text}">${c > 0 ? c : ''}</span>
+    `;
+    btn.addEventListener('click', () => addPlate(plate));
+    palette.appendChild(btn);
+  });
+}
+
+function renderPlateList() {
+  const list = document.getElementById('plateList');
+  list.innerHTML = '';
+  if (sides.length === 0) {
+    list.innerHTML = '<span class="empty-msg">No plates added</span>';
+    return;
+  }
+
+  const counts = {};
+  const order = [];
+  sides.forEach(p => {
+    if (!counts[p.w]) { order.push(p); }
+    counts[p.w] = (counts[p.w] || 0) + 1;
+  });
+
+  order.forEach(plate => {
+    const tag = document.createElement('div');
+    tag.className = 'plate-tag';
+    const c = counts[plate.w];
+    tag.style.background = plate.color;
+    tag.innerHTML = `
+      <span class="dot"></span>
+      <span style="color:${plate.text}">${c}×${plate.label} kg</span>
+    `;
+    tag.title = 'Tap to remove one';
+    tag.addEventListener('click', () => removePlate(plate.w));
+    list.appendChild(tag);
+  });
+}
+
+function renderBar() {
+  const svg = document.getElementById('barsvg');
+  const W = 460, H = 80, CX = W / 2, CY = H / 2;
+  const BARH = 9, COLW = 7, COLH = 20;
+  const SHAFT = 85;    // half-length of centre knurled shaft
+  const HALF  = 215;   // centre → bar tip
+  const COL_D = 100;   // fixed collar distance from centre (just outside shaft)
+  const GAP = 1;
+  const PLATE_AREA = HALF - (COL_D + COLW); // sleeve outside the collar
+
+  const counts = {}, order = [];
+  sides.forEach(p => {
+    if (!counts[p.w]) order.push(p);
+    counts[p.w] = (counts[p.w] || 0) + 1;
+  });
+  order.sort((a, b) => b.w - a.w); // heaviest first → closest to collar
+
+  svg.innerHTML = '';
+  const mk = (tag, attrs) => {
+    const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    Object.entries(attrs).forEach(([k, v]) => e.setAttribute(k, v));
+    svg.appendChild(e); return e;
+  };
+
+  // Bar — single uniform color and size
+  mk('rect', {x: CX-HALF, y: CY-BARH/2, width: HALF*2, height: BARH, fill:'#b08030', rx:2});
+
+  // Fixed yellow collar
+  mk('rect', {x: CX - COL_D - COLW, y: CY - COLH/2, width: COLW, height: COLH, fill:'#c09040', rx:2});
+  mk('rect', {x: CX + COL_D,        y: CY - COLH/2, width: COLW, height: COLH, fill:'#c09040', rx:2});
+
+  // Bar weight label above the bar
+  const lbl = mk('text', {x: CX, y: CY - BARH/2 - 5, 'font-size': 9, 'font-family': "'Barlow Condensed',sans-serif",
+    'font-weight': 700, 'text-anchor': 'middle', 'dominant-baseline': 'auto', fill: '#9a7830'});
+  lbl.textContent = `${barWeight} kg`;
+
+  const PH = {25:68, 20:62, 15:54, 10:46, 5:36, 2.5:30, 2:28, 1.5:26, 1.25:24, 0.5:20};
+  const PW = {25:12, 20:11, 15:10, 10:9,  5:8,  2.5:6,  2:6,  1.5:5,  1.25:5,  0.5:4};
+
+  let used = 0;
+  order.forEach(p => { used += counts[p.w] * ((PW[p.w] || 6) + GAP); });
+  const sc = used > PLATE_AREA ? PLATE_AREA / used : 1;
+
+  // Plates load outward from collar toward the bar end
+  let offset = 0;
+  order.forEach(p => {
+    const cnt = counts[p.w], ph = PH[p.w] || 28, pw = (PW[p.w] || 6) * sc;
+    for (let i = 0; i < cnt; i++) {
+      const d = COL_D + COLW + offset + i * (pw + GAP * sc);
+      mk('rect', {x: CX - d - pw, y: CY - ph/2, width: pw, height: ph, fill: p.color, rx: 2});
+      mk('rect', {x: CX + d,      y: CY - ph/2, width: pw, height: ph, fill: p.color, rx: 2});
+    }
+    offset += cnt * (pw + GAP * sc);
+  });
+}
+
+render();
+</script>
+</body>
+</html>
