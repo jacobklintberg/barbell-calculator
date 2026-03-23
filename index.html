@@ -466,6 +466,8 @@ function renderPlateList() {
     counts[p.w] = (counts[p.w] || 0) + 1;
   });
 
+  order.sort((a, b) => a.w - b.w);
+
   order.forEach(plate => {
     const tag = document.createElement('div');
     tag.className = 'plate-tag';
