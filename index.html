@@ -5,7 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Barbell">
 <title>Barbell Calculator</title>
+<link rel="apple-touch-icon" sizes="180x180" href="weightlifter_gold_180x180.png">
+<link rel="icon" type="image/png" href="weightlifter_gold_180x180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -309,6 +312,69 @@
     font-size: 14px;
     padding: 4px 0;
   }
+
+  /* TARGET INPUT */
+  .target {
+    display: flex;
+    gap: 8px;
+    padding: 0 1.2rem 1rem;
+  }
+
+  .target input {
+    flex: 1;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    outline: none;
+    transition: border-color 0.15s;
+    min-width: 0;
+  }
+
+  .target input::placeholder {
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 14px;
+  }
+
+  .target input:focus {
+    border-color: var(--bar-color);
+  }
+
+  .target .fill-btn {
+    background: #1e1a12;
+    border: 1.5px solid var(--bar-color);
+    color: var(--bar-color);
+    border-radius: 10px;
+    padding: 0 18px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .target .fill-btn:active { transform: scale(0.97); }
+
+  .target-msg {
+    padding: 0 1.2rem 0.6rem;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    min-height: 18px;
+  }
+  .target-msg.warn { color: #e0a050; }
+  .target-msg.err  { color: #e05050; }
 </style>
 </head>
 <body>
@@ -333,6 +399,13 @@
       <svg id="barsvg" viewBox="0 0 460 80" xmlns="http://www.w3.org/2000/svg"></svg>
     </div>
   </div>
+
+  <div class="target">
+    <input id="targetInput" type="number" inputmode="decimal" min="0" step="0.5"
+           placeholder="Target weight (kg)">
+    <button class="fill-btn" onclick="fillToTarget()">Fill</button>
+  </div>
+  <div class="target-msg" id="targetMsg"></div>
 
   <div class="palette-label">Tap to add plates (per side)</div>
   <div class="palette" id="palette"></div>
@@ -377,6 +450,7 @@ function setBar(w) {
 function addPlate(plate) {
   sides.push(plate);
   history.push([...sides]);
+  clearTargetMsg();
   render();
   bumpAnim();
 }
@@ -386,6 +460,7 @@ function removePlate(plateW) {
   if (idx !== -1) {
     sides.splice(sides.length - 1 - idx, 1);
     history.push([...sides]);
+    clearTargetMsg();
     render();
     bumpAnim();
   }
@@ -395,6 +470,7 @@ function undo() {
   if (history.length > 1) {
     history.pop();
     sides = [...history[history.length - 1]];
+    clearTargetMsg();
     render();
     bumpAnim();
   }
@@ -403,9 +479,66 @@ function undo() {
 function clearAll() {
   sides = [];
   history = [[]];
+  clearTargetMsg();
   render();
   bumpAnim();
 }
+
+function setTargetMsg(text, kind) {
+  const el = document.getElementById('targetMsg');
+  el.textContent = text || '';
+  el.classList.remove('warn', 'err');
+  if (kind) el.classList.add(kind);
+}
+
+function clearTargetMsg() { setTargetMsg('', null); }
+
+function formatWeight(n) {
+  return Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/\.?0+$/, '');
+}
+
+function fillToTarget() {
+  const input = document.getElementById('targetInput');
+  const raw = input.value.trim();
+  if (raw === '') { setTargetMsg('Enter a target weight', 'err'); return; }
+  const target = Number(raw);
+  if (!Number.isFinite(target) || target < 0) {
+    setTargetMsg('Invalid weight', 'err');
+    return;
+  }
+  if (target < barWeight) {
+    setTargetMsg(`Target below bar weight (${barWeight} kg)`, 'err');
+    return;
+  }
+
+  const perSide = (target - barWeight) / 2;
+  const EPS = 1e-9;
+  let remaining = perSide;
+  const picked = [];
+  for (const plate of PLATES) {
+    while (remaining + EPS >= plate.w) {
+      picked.push(plate);
+      remaining -= plate.w;
+    }
+  }
+
+  sides = picked;
+  history.push([...sides]);
+  render();
+  bumpAnim();
+
+  const achieved = totalWeight();
+  if (Math.abs(achieved - target) < EPS) {
+    setTargetMsg(`Filled to ${formatWeight(achieved)} kg`, null);
+  } else {
+    const short = target - achieved;
+    setTargetMsg(`Closest match: ${formatWeight(achieved)} kg — ${formatWeight(short)} kg short`, 'warn');
+  }
+}
+
+document.getElementById('targetInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); fillToTarget(); }
+});
 
 function bumpAnim() {
   const el = document.getElementById('totalWeight');
