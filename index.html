@@ -317,11 +317,60 @@
   .target {
     display: flex;
     gap: 8px;
-    padding: 0 1.2rem 1rem;
+    padding: 0 1.2rem 0.5rem;
   }
 
-  .target input {
+  .target-ops {
+    display: flex;
+    gap: 6px;
+    padding: 0 1.2rem 0.5rem;
+  }
+
+  .op-btn {
     flex: 1;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 0;
+    color: var(--text);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.1s, background 0.15s;
+  }
+
+  .op-btn:active { transform: scale(0.93); background: var(--surface2); }
+
+  .input-wrap {
+    flex: 1;
+    position: relative;
+    display: flex;
+    min-width: 0;
+  }
+
+  .input-ghost {
+    position: absolute;
+    inset: 0;
+    border: 1.5px solid transparent;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    pointer-events: none;
+    white-space: pre;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+  }
+
+  .input-ghost .gh-typed   { visibility: hidden; }
+  .input-ghost .gh-equals  { color: var(--muted); opacity: 0.7; }
+
+  .target input {
+    width: 100%;
     background: var(--surface);
     border: 1.5px solid var(--border);
     border-radius: 10px;
@@ -401,9 +450,19 @@
   </div>
 
   <div class="target">
-    <input id="targetInput" type="number" inputmode="decimal" min="0" step="0.5"
-           placeholder="Target weight (kg)">
+    <div class="input-wrap">
+      <input id="targetInput" type="text" inputmode="decimal" autocomplete="off"
+             autocorrect="off" autocapitalize="off" spellcheck="false"
+             placeholder="Target weight (e.g. 100*0.8)">
+      <div class="input-ghost" id="inputGhost"></div>
+    </div>
     <button class="fill-btn" onclick="fillToTarget()">Fill</button>
+  </div>
+  <div class="target-ops">
+    <button class="op-btn" onclick="insertOp('+')">+</button>
+    <button class="op-btn" onclick="insertOp('-')">−</button>
+    <button class="op-btn" onclick="insertOp('*')">×</button>
+    <button class="op-btn" onclick="insertOp('/')">÷</button>
   </div>
   <div class="target-msg" id="targetMsg"></div>
 
@@ -497,12 +556,63 @@ function formatWeight(n) {
   return Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/\.?0+$/, '');
 }
 
+function evaluateExpression(raw) {
+  const expr = raw
+    .replace(/,/g, '.')
+    .replace(/\s/g, '')
+    .replace(/×/g, '*')
+    .replace(/÷/g, '/')
+    .replace(/−/g, '-');
+  if (!expr) return null;
+  if (!/^[\d+\-*/().]+$/.test(expr)) return null;
+  try {
+    const result = Function('"use strict"; return (' + expr + ')')();
+    return Number.isFinite(result) ? result : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function insertOp(op) {
+  const input = document.getElementById('targetInput');
+  const start = input.selectionStart ?? input.value.length;
+  const end   = input.selectionEnd   ?? input.value.length;
+  input.value = input.value.slice(0, start) + op + input.value.slice(end);
+  const pos = start + op.length;
+  input.focus();
+  try { input.setSelectionRange(pos, pos); } catch (_) {}
+  updateTargetPreview();
+}
+
+function updateTargetPreview() {
+  const input = document.getElementById('targetInput');
+  const ghost = document.getElementById('inputGhost');
+  const raw = input.value;
+  const trimmed = raw.trim();
+  ghost.textContent = '';
+  if (!trimmed || /^[\d.,]+$/.test(trimmed)) return;
+  const result = evaluateExpression(trimmed);
+  if (result === null || result < 0) return;
+  const typed = document.createElement('span');
+  typed.className = 'gh-typed';
+  typed.textContent = raw;
+  const eq = document.createElement('span');
+  eq.className = 'gh-equals';
+  eq.textContent = ' = ' + formatWeight(result) + ' kg';
+  ghost.appendChild(typed);
+  ghost.appendChild(eq);
+}
+
 function fillToTarget() {
   const input = document.getElementById('targetInput');
   const raw = input.value.trim();
   if (raw === '') { setTargetMsg('Enter a target weight', 'err'); return; }
-  const target = Number(raw);
-  if (!Number.isFinite(target) || target < 0) {
+  const target = evaluateExpression(raw);
+  if (target === null) {
+    setTargetMsg('Invalid expression', 'err');
+    return;
+  }
+  if (target < 0) {
     setTargetMsg('Invalid weight', 'err');
     return;
   }
@@ -539,6 +649,7 @@ function fillToTarget() {
 document.getElementById('targetInput').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') { e.preventDefault(); fillToTarget(); }
 });
+document.getElementById('targetInput').addEventListener('input', updateTargetPreview);
 
 function bumpAnim() {
   const el = document.getElementById('totalWeight');
