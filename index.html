@@ -538,6 +538,8 @@ function undo() {
 function clearAll() {
   sides = [];
   history = [[]];
+  document.getElementById('targetInput').value = '';
+  document.getElementById('inputGhost').textContent = '';
   clearTargetMsg();
   render();
   bumpAnim();
